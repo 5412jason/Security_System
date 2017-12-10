@@ -33,6 +33,15 @@
 //         VCC        ->       3V3
 //         SDA        ->        D2
 //         SCL        ->        D1
+//
+//
+// Code from dmainmon, 2017, http://www.instructables.com/id/ArduCAM-Mini-ESP8266-Web-Camera/
+//           diyprojects, 2017, https://diyprojects.io/esp8266-web-server-tutorial-create-html-interface-connected-object/#.Wix7z0pKuHu
+//
+// Code Edited by Geoff Lynch, 2017
+//
+
+
 
 
 #include <FS.h> // FOR SPIFFS
@@ -42,6 +51,7 @@
 #include <Wire.h>
 #include <ArduCAM.h>
 #include <SPI.h>
+#include <DHT.h>
 #include "memorysaver.h"
 #if !(defined ESP8266 )
 #error Please select the ArduCAM ESP8266 UNO board in the Tools/Board
@@ -54,6 +64,12 @@ String deviceId = "v0995B81803BB122";
 const char* logServer = "api.pushingbox.com";
 int temp=2;
 
+
+//sensor data variables
+#define DHTTYPE   DHT22       // DHT type (DHT11, DHT22)
+#define DHTPIN    D4          // Set temperature sensor to pin D4 on WiFi Board
+float   t = 0 ;//temp
+float   h = 0 ;//humidity
 
 
 
@@ -79,8 +95,8 @@ const char *AP_ssid = "arducam_esp8266";
 const char *AP_password = "APpassword";
 
 //Station mode you should put your ssid and password
-const char *ssid = "Lynch"; // Put your SSID here
-const char *password = "Gasgas123"; // Put your PASSWORD here
+const char *ssid = "Pixel"; // Put your SSID here
+const char *password = "Esp8266c"; // Put your PASSWORD here
 
 static IPAddress ip(10, 0, 0, 24); // static IP used for browser access: http://IPaddress
 static IPAddress gateway(10, 0, 0, 1);
@@ -858,6 +874,57 @@ void setup() {
 }
 
 
+
+/////////////////////////////
+//   Display Sensor Data   //
+/////////////////////////////
+
+String getPage(){
+  String page = "<html lang=fr-FR><head><meta http-equiv='refresh' content='10'/>";
+  page += "<title>Sensor Data</title>";
+  page += "<style> body { background-color: #fffff; font-family: Arial, Helvetica, Sans-Serif; Color: #000088; }</style>";
+  page += "</head><body><h1></h1>";
+  page += "<h3>Sensor Data</h3>";
+  page += "<ul><li>Temperature : ";
+  page += t;
+  page += "°C</li>";
+  page += "<li>Humidite : ";
+  page += h;
+  page += "</body></html>";
+  return page;
+}
+void handleRoot(){ 
+  if ( server.hasArg("LED") ) {
+    handleSubmit();
+  } else {
+    server.send ( 200, "text/html", getPage() );
+  }  
+}
+ 
+void handleSubmit() {
+  // Actualise le GPIO / Update GPIO 
+  String LEDValue;
+  LEDValue = server.arg("LED");
+  Serial.println("Set GPIO "); Serial.print(LEDValue);
+  if ( LEDValue == "1" ) {
+    digitalWrite(LEDPIN, 1);
+    etatLed = "On";
+    server.send ( 200, "text/html", getPage() );
+  } else if ( LEDValue == "0" ) {
+    digitalWrite(LEDPIN, 0);
+    etatLed = "Off";
+    server.send ( 200, "text/html", getPage() );
+  } else {
+    Serial.println("Err Led Value");
+  }
+}
+
+
+
+
+
+
+
 /////////////////////////////
 //   Experimental Notifs   //
 /////////////////////////////
@@ -900,12 +967,14 @@ void sendNotification(String message){
 //    Main loop function   //
 /////////////////////////////
 void loop() {
-  if(temp==1){
+  /*if(temp==1){
     // Sending a notification to your mobile phone
     // function takes the message as a parameter
     sendNotification("Hello World from ESP8266!");
     temp+=1;
-  }
+  }*/
   server.handleClient();
+  t = dht.readTemperature();
+  h = dht.readHumidity();
 }
 
